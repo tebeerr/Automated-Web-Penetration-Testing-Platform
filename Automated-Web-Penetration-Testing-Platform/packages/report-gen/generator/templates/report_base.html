@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Sentinel Security Report</title>
+<style>
+@page { size: A4; margin: 22mm 18mm; }
+body { font-family: 'Inter', system-ui, sans-serif; color: #111; font-size: 11pt; }
+h1 { color: #6b21a8; font-size: 22pt; margin: 0; }
+h2 { color: #4c1d95; margin-top: 22pt; border-bottom: 1px solid #ddd; padding-bottom: 4pt; }
+h3 { margin-top: 14pt; }
+.meta { color: #555; font-size: 10pt; margin: 4pt 0 14pt; }
+.summary { background: #f5f3ff; border-left: 4px solid #6b21a8; padding: 10pt 14pt; margin: 14pt 0; }
+.stats { display: flex; gap: 10pt; margin: 12pt 0; }
+.stat { flex: 1; padding: 10pt; border: 1px solid #eee; border-radius: 6pt; text-align: center; }
+.stat-num { font-size: 18pt; font-weight: 700; }
+.crit { color: #e24b4a; } .high { color: #d85a30; } .med { color: #ef9f27; } .low { color: #1d9e75; }
+.finding { border: 1px solid #e5e7eb; border-radius: 6pt; padding: 10pt; margin-bottom: 8pt; }
+.sev-pill { display: inline-block; padding: 2pt 8pt; border-radius: 12pt; font-size: 8pt; font-weight: 700; text-transform: uppercase; color: #fff; }
+.sev-critical { background: #e24b4a; } .sev-high { background: #d85a30; }
+.sev-medium { background: #ef9f27; } .sev-low { background: #1d9e75; } .sev-info { background: #378add; }
+code { font-family: ui-monospace, Consolas, monospace; background: #f4f4f7; padding: 1pt 4pt; border-radius: 3pt; }
+</style>
+</head>
+<body>
+<h1>Sentinel Security Audit</h1>
+<div class="meta">Target: <strong>{{ scan.target_url }}</strong> · Generated {{ generated_at }} · Scan {{ scan.id }}</div>
+
+<div class="summary">
+  <h3 style="margin-top:0">Executive Summary</h3>
+  <p>{{ executive_summary or "Summary unavailable." }}</p>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-num crit">{{ stats.critical }}</div>Critical</div>
+  <div class="stat"><div class="stat-num high">{{ stats.high }}</div>High</div>
+  <div class="stat"><div class="stat-num med">{{ stats.medium }}</div>Medium</div>
+  <div class="stat"><div class="stat-num low">{{ stats.low }}</div>Low</div>
+</div>
+
+{% for category, items in findings_by_owasp.items() %}
+<h2>{{ category }} — {{ items[0].owasp_name }}</h2>
+{% for f in items %}
+<div class="finding">
+  <div>
+    <span class="sev-pill sev-{{ f.severity.value }}">{{ f.severity.value }}</span>
+    <strong>{{ f.name }}</strong>
+    {% if f.cvss_score %}<span style="color:#666;font-size:9pt"> · CVSS {{ f.cvss_score }}</span>{% endif %}
+    {% if f.cwe_id %}<span style="color:#666;font-size:9pt"> · {{ f.cwe_id }}</span>{% endif %}
+  </div>
+  {% if f.url_affected %}<div style="margin-top:4pt"><code>{{ f.url_affected }}</code></div>{% endif %}
+  <p style="margin-top:6pt">{{ f.description }}</p>
+  {% if f.evidence %}<p><strong>Evidence:</strong> <code>{{ f.evidence }}</code></p>{% endif %}
+  {% if f.remediation %}<p><strong>Remediation:</strong> {{ f.remediation }}</p>{% endif %}
+</div>
+{% endfor %}
+{% endfor %}
+
+</body>
+</html>

@@ -1,62 +1,32 @@
 SHELL := /bin/sh
-COMPOSE := docker compose -f infra/docker-compose.yml --env-file .env
-COMPOSE_DEV := $(COMPOSE) -f infra/docker-compose.dev.yml
 
-.PHONY: help up down restart logs ps build dev dev-down backend-shell worker-shell \
-        front-install front-dev front-build api-fmt api-lint api-test clean
+.PHONY: help install backend frontend front-install api-install api-fmt api-lint api-test clean
 
 help:
 	@echo "Sentinel — make targets"
-	@echo "  up            Bring up the full stack (prod-ish)"
-	@echo "  down          Tear down the stack (keeps volumes)"
-	@echo "  dev           Bring up the stack with live-reload mounts"
-	@echo "  dev-down      Tear down the dev stack"
-	@echo "  logs          Tail logs for all services"
-	@echo "  build         Rebuild all images"
-	@echo "  front-install Install frontend deps (host)"
-	@echo "  front-dev     Run Vite dev server on host"
-	@echo "  front-build   Build the frontend bundle"
-	@echo "  api-fmt       ruff format the backend"
-	@echo "  api-lint      ruff check the backend"
-	@echo "  api-test      Run backend tests"
+	@echo "  install        Install backend + frontend deps"
+	@echo "  api-install    Install backend deps only (pip install -e .)"
+	@echo "  front-install  Install frontend deps only (npm install)"
+	@echo "  backend        Run FastAPI dev server (uvicorn --reload)"
+	@echo "  frontend       Run Vite dev server"
+	@echo "  api-fmt        ruff format the backend"
+	@echo "  api-lint       ruff check the backend"
+	@echo "  api-test       Run backend tests"
+	@echo "  clean          Remove SQLite DB + generated reports"
 
-up:
-	$(COMPOSE) up -d
+install: api-install front-install
 
-down:
-	$(COMPOSE) down
-
-restart: down up
-
-logs:
-	$(COMPOSE) logs -f --tail=200
-
-ps:
-	$(COMPOSE) ps
-
-build:
-	$(COMPOSE) build
-
-dev:
-	$(COMPOSE_DEV) up
-
-dev-down:
-	$(COMPOSE_DEV) down
-
-backend-shell:
-	$(COMPOSE) exec backend /bin/bash
-
-worker-shell:
-	$(COMPOSE) exec worker /bin/bash
+api-install:
+	cd apps/backend && python -m pip install -U pip && pip install -e .[dev]
 
 front-install:
-	cd apps/frontend && npm install
+	cd apps/frontend && npm install --no-audit --no-fund
 
-front-dev:
+backend:
+	cd apps/backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+frontend:
 	cd apps/frontend && npm run dev
-
-front-build:
-	cd apps/frontend && npm run build
 
 api-fmt:
 	cd apps/backend && ruff format app
@@ -68,4 +38,5 @@ api-test:
 	cd apps/backend && pytest -q
 
 clean:
-	$(COMPOSE) down -v
+	rm -f apps/backend/sentinel.db
+	rm -rf apps/backend/reports

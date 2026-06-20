@@ -2,25 +2,36 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 
-from engine.base_scanner import BaseScanner, Finding
+import httpx
+
+from engine.base_scanner import Finding
+from engine.probes.base import BaseProbe, ProbeContext
 
 log = logging.getLogger(__name__)
 
-ProgressCallback = Callable[[str, int, str], "asyncio.Future | None"]
+ProgressCallback = Callable[[str, int, str], Awaitable[None] | None]
 
 
 class ScanOrchestrator:
-    """Runs registered scanners in parallel and merges + dedupes findings."""
+    """Runs registered probes sequentially against a single target URL."""
 
-    def __init__(self, scanners: list[BaseScanner] | None = None, config: dict | None = None):
-        self.scanners = scanners or []
-        self.config = config or {}
+    def __init__(
+        self,
+        probes: list[BaseProbe] | None = None,
+        user_agent: str = "Sentinel-Scanner/0.1",
+        request_delay_ms: int = 200,
+        request_timeout_s: float = 15.0,
+    ) -> None:
+        self.probes: list[BaseProbe] = probes or []
+        self.user_agent = user_agent
+        self.request_delay_ms = request_delay_ms
+        self.request_timeout_s = request_timeout_s
         self._cb: ProgressCallback | None = None
 
-    def register(self, scanner: BaseScanner) -> None:
-        self.scanners.append(scanner)
+    def register(self, probe: BaseProbe) -> None:
+        self.probes.append(probe)
 
     def on_progress(self, cb: ProgressCallback) -> None:
         self._cb = cb
@@ -33,31 +44,40 @@ class ScanOrchestrator:
             await result
 
     async def run(self, target_url: str) -> list[Finding]:
-        await self._notify("recon", 5, "Checking scanner availability")
-        available = [s for s in self.scanners if await s.is_available()]
-        if not available:
-            raise RuntimeError("No scanners available. Install ZAP/Nuclei/Nmap.")
+        if not self.probes:
+            raise RuntimeError("No probes registered.")
 
-        total = len(available)
-        tasks = [self._run_one(s, target_url, i, total) for i, s in enumerate(available)]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        await self._notify("recon", 5, "Preparing HTTP client")
+        async with httpx.AsyncClient(
+            headers={"User-Agent": self.user_agent},
+            timeout=self.request_timeout_s,
+            verify=True,
+        ) as client:
+            ctx = ProbeContext(
+                target_url=target_url,
+                client=client,
+                user_agent=self.user_agent,
+                request_delay_ms=self.request_delay_ms,
+            )
 
-        merged: list[Finding] = []
-        for r in results:
-            if isinstance(r, Exception):
-                log.warning("Scanner crashed: %s", r)
-                continue
-            merged.extend(r)
+            all_findings: list[Finding] = []
+            total = len(self.probes)
+            for index, probe in enumerate(self.probes):
+                base = 10 + int((index / total) * 80)
+                await self._notify(
+                    "scanning",
+                    base,
+                    f"Running probe {probe.code} ({probe.owasp_category} {probe.owasp_name})",
+                )
+                try:
+                    findings = await probe.run(ctx)
+                except Exception as e:
+                    log.warning("Probe %s crashed: %s", probe.code, e)
+                    findings = []
+                all_findings.extend(findings)
 
-        await self._notify("scanning", 95, "Deduplicating findings")
-        return self._dedupe(merged)
-
-    async def _run_one(
-        self, scanner: BaseScanner, target_url: str, index: int, total: int
-    ) -> list[Finding]:
-        base = 10 + int((index / total) * 70)
-        await self._notify("scanning", base, f"Running {scanner.name}")
-        return await scanner.scan(target_url, self.config)
+            await self._notify("scanning", 95, "Deduplicating findings")
+            return self._dedupe(all_findings)
 
     @staticmethod
     def _dedupe(findings: list[Finding]) -> list[Finding]:

@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -19,7 +18,7 @@ from app.models import (  # noqa: F401
     VerifiedTarget,
     Vulnerability,
 )
-from app.websocket.scan_progress import redis_pubsub_relay, ws_router
+from app.services.scheduler import shutdown_scheduler, start_scheduler
 
 logging.basicConfig(level=logging.INFO if not settings.DEBUG else logging.DEBUG)
 
@@ -28,16 +27,11 @@ logging.basicConfig(level=logging.INFO if not settings.DEBUG else logging.DEBUG)
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
-    relay_task = asyncio.create_task(redis_pubsub_relay())
+    start_scheduler()
     try:
         yield
     finally:
-        relay_task.cancel()
-        try:
-            await relay_task
-        except asyncio.CancelledError:
-            pass
+        shutdown_scheduler()
         await engine.dispose()
 
 
@@ -60,7 +54,6 @@ app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(targets.router, prefix="/api/targets", tags=["targets"])
 app.include_router(scans.router, prefix="/api/scans", tags=["scans"])
 app.include_router(reports.router, prefix="/api/reports", tags=["reports"])
-app.include_router(ws_router)
 
 
 @app.get("/api/health", tags=["meta"])

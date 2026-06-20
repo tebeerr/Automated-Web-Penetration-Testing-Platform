@@ -13,34 +13,27 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     FRONTEND_URL: str = "http://localhost:5173"
 
-    # Database
-    DATABASE_URL: str = "postgresql+asyncpg://sentinel:sentinel@postgres:5432/sentinel"
-
-    # Redis / Celery
-    REDIS_URL: str = "redis://redis:6379/0"
-    CELERY_BROKER_URL: str = "redis://redis:6379/1"
-    CELERY_RESULT_BACKEND: str = "redis://redis:6379/2"
+    # Database — SQLite default for host-only dev; swap for Postgres in prod.
+    DATABASE_URL: str = "sqlite+aiosqlite:///./sentinel.db"
 
     # Auth
-    JWT_SECRET: str = Field(default="change-me-in-production", min_length=8)
+    JWT_SECRET: str = Field(default="dev-only-change-me-in-production-please", min_length=8)
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRES_MINUTES: int = 60 * 24
 
     # Rate limiting
     RATE_LIMIT_PER_MIN: int = 60
 
-    # Scanner integrations
-    ZAP_API_URL: str = "http://zap:8080"
-    ZAP_API_KEY: str = ""
-
-    # LLM
-    ANTHROPIC_API_KEY: str = ""
-    OPENAI_API_KEY: str = ""
-    LLM_PROVIDER: str = "anthropic"
-    LLM_MODEL: str = "claude-sonnet-4-6"
+    # Scan engine knobs
+    SCAN_TIMEOUT_SECONDS: int = 600
+    SCAN_REQUEST_DELAY_MS: int = 200
+    SCAN_USER_AGENT: str = "Sentinel-Scanner/0.1 (+https://sentinel.local)"
 
     # Reports
-    REPORTS_DIR: str = "/app/reports"
+    REPORTS_DIR: str = "./reports"
+
+    # Domain verification toggle — when False, scans skip the verified-target check.
+    REQUIRE_VERIFIED_TARGET: bool = False
 
 
 @lru_cache

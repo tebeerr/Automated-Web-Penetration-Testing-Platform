@@ -11,7 +11,6 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       proxy: {
         '/api': { target: apiTarget, changeOrigin: true },
-        '/ws': { target: apiTarget.replace(/^http/, 'ws'), ws: true },
       },
     },
   }

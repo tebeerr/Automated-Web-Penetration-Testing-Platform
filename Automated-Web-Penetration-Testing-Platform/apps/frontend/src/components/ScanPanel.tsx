@@ -22,8 +22,17 @@ const OWASP: { code: string; label: string }[] = [
   { code: 'A10', label: 'Server-Side Request Forgery' },
 ]
 
+type ScanProfile = 'web_only' | 'recon_web' | 'full_pipeline'
+
+const SCAN_PROFILES: { value: ScanProfile; label: string }[] = [
+  { value: 'web_only', label: 'Web Probes Only' },
+  { value: 'recon_web', label: 'Network Recon + Web Probes' },
+  { value: 'full_pipeline', label: 'Full Pipeline (Recon + Exploit + Post)' },
+]
+
 export default function ScanPanel() {
   const [target, setTarget] = useState('')
+  const [scanProfile, setScanProfile] = useState<ScanProfile>('web_only')
   const [scanning, setScanning] = useState(false)
   const [progress, setProgress] = useState(0)
   const [stage, setStage] = useState(0)
@@ -97,6 +106,18 @@ export default function ScanPanel() {
           />
           <span className={`input-status ${scanning ? 'live' : ''}`} />
         </div>
+        <select
+          className="scan-profile-selector"
+          value={scanProfile}
+          onChange={(e) => setScanProfile(e.target.value as ScanProfile)}
+          disabled={scanning}
+        >
+          {SCAN_PROFILES.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
+          ))}
+        </select>
         {scanning ? (
           <button className="btn btn-danger" onClick={stopScan}>
             Stop Scan
@@ -107,6 +128,13 @@ export default function ScanPanel() {
           </button>
         )}
       </div>
+
+      {scanProfile === 'full_pipeline' && (
+        <div className="pipeline-warning">
+          ⚠️ Full Pipeline runs automated exploitation &amp; post-exploitation.
+          Only scan targets you own or are explicitly authorized to test.
+        </div>
+      )}
 
       <div className="scan-body">
         <div className="scan-left glass">

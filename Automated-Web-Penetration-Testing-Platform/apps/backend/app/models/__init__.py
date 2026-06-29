@@ -1,3 +1,4 @@
+from app.models.recon_result import ReconResult
 from app.models.report import Report
 from app.models.rl_feedback import RLFeedback
 from app.models.scan import Scan, ScanStatus
@@ -6,6 +7,7 @@ from app.models.verified_target import VerifiedTarget
 from app.models.vulnerability import SeverityLevel, Vulnerability
 
 __all__ = [
+    "ReconResult",
     "Report",
     "RLFeedback",
     "Scan",

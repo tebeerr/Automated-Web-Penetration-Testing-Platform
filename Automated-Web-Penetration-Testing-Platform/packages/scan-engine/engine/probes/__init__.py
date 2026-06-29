@@ -4,6 +4,10 @@ from engine.probes.headers import SecurityHeadersProbe
 from engine.probes.sqli import SQLiProbe
 from engine.probes.xss import XSSProbe
 
+# NOTE: system-tool probes (nmap_recon, msf_exploit, msf_postexploit) are intentionally
+# NOT imported here. They depend on python-nmap / pymetasploit3 which are only present on
+# the Kali VM. pipeline_runner imports them directly so web_only scans never require them.
+
 ALL_PROBES: list[type[BaseProbe]] = [
     SecurityHeadersProbe,
     SQLiProbe,

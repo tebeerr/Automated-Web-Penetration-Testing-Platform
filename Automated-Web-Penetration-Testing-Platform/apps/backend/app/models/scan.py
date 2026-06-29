@@ -15,6 +15,8 @@ class ScanStatus(str, enum.Enum):
     VALIDATING = "validating"
     RECON = "recon"
     SCANNING = "scanning"
+    EXPLOITING = "exploiting"
+    POST_EXPLOIT = "post_exploit"
     AI_ANALYZING = "ai_analyzing"
     GENERATING_REPORT = "generating_report"
     COMPLETED = "completed"
@@ -51,3 +53,6 @@ class Scan(Base):
         "Vulnerability", back_populates="scan", cascade="all, delete-orphan"
     )
     reports = relationship("Report", back_populates="scan", cascade="all, delete-orphan")
+    recon_results = relationship(
+        "ReconResult", back_populates="scan", cascade="all, delete-orphan"
+    )

@@ -5,12 +5,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.middleware.rate_limiter import RateLimiterMiddleware
-from app.api.routes import auth, reports, scans, targets
+from app.api.routes import auth, recon, reports, scans, targets
 from app.config import settings
 
 # Ensure all models are imported so Base.metadata is populated.
 from app.database import Base, engine  # noqa: F401
 from app.models import (  # noqa: F401
+    ReconResult,
     Report,
     RLFeedback,
     Scan,
@@ -53,6 +54,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(targets.router, prefix="/api/targets", tags=["targets"])
 app.include_router(scans.router, prefix="/api/scans", tags=["scans"])
+app.include_router(recon.router, prefix="/api/scans", tags=["recon"])
 app.include_router(reports.router, prefix="/api/reports", tags=["reports"])
 
 

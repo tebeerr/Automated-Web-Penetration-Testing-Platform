@@ -10,8 +10,12 @@ from app.models.verified_target import VerifiedTarget
 from app.models.vulnerability import Vulnerability
 from app.schemas.scan import ScanCreate, ScanResponse
 from app.schemas.vulnerability import VulnerabilityResponse
+from app.services.pipeline_runner import run_pipeline_job
 from app.services.scan_runner import run_scan_job
 from app.services.scheduler import scheduler
+
+# scan_profiles that trigger the multi-phase nmap/metasploit pipeline.
+_PIPELINE_PROFILES = {"recon_web", "full_pipeline"}
 from app.services.url_validator import URLValidationError, validate_target_url
 
 router = APIRouter()
@@ -55,8 +59,13 @@ async def create_scan(
     await db.commit()
     await db.refresh(scan)
 
+    job_func = (
+        run_pipeline_job
+        if payload.scan_profile in _PIPELINE_PROFILES
+        else run_scan_job
+    )
     job = scheduler.add_job(
-        run_scan_job,
+        job_func,
         args=[str(scan.id)],
         id=f"scan-{scan.id}",
         misfire_grace_time=30,

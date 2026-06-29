@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Sentinel pentest suite — FastAPI backend (intern build)"
 requires-python = ">=3.11"
 dependencies = [
+  "pydantic-settings>=2.0",
   "python-nmap>=0.7.1",
   "pymetasploit3>=1.0.6",
   "fastapi>=0.115.0",
